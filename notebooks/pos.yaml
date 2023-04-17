@@ -1,0 +1,140 @@
+SUBJECT:
+  - nsubj
+  - nsubjpass
+  # - dobj
+  - COMPOUND SUBJECT
+  - POSSESIVE SUBJECT
+  - det SUBJECT
+  - AMOD SUBJECT
+  - SUBJECT OF OBJECT # the rule of 1756
+  # - conj SUBJECT
+  # - ENTITY prep ENTITY
+AMOD:
+  - amod
+  - advmod
+  - AMOD AMOD
+
+OBJECT:
+  - pobj
+  - dobj
+  - COMPOUND OBJECT
+  # - POSSESIVE OBJECT
+  - det OBJECT
+  - AMOD OBJECT
+  - conj OBJECT
+  - ccomp prep OBJECT # prizes of war
+  - OBJECT OF OBJECT
+  # - OBJECT prep OBJECT # Britain's war with france
+
+OF:
+  - (of)
+IN:
+  - (in)
+  - (into)
+
+POSSESIVE:
+  - poss
+  - POSSESIVE case
+
+COMPOUND:
+  - compound
+  - COMPOUND COMPOUND
+
+ATTRIBUTE:
+  - attr
+  - AMOD ATTRIBUTE
+  - det ATTRIBUTE
+  - COMPOUND ATTRIBUTE
+  - POSSESIVE ATTRIBUTE
+
+QUANTITY:
+  - nummod
+  - QUANTITY dobj
+  - QUANTITY conj
+  - COMPOUND QUANTITY
+
+AUX:
+  - aux
+  - AUX neg
+  - AUX AUX
+  - AUX relcl
+  - auxpass advcl
+
+PREDICATE:
+  # - ccomp
+  - ROOT
+  - advcl
+  - acl
+  - relcl prep
+  - conj PREDICATE
+  # - advmod PREDICATE
+
+
+
+
+info: |
+  from yaml import safe_load
+  
+  import spacy
+  import coreferee
+
+  with open(r'C:\git\ipypdf\pos.yaml', 'r') as f:
+      pos = {k: set([tuple(s.split()) for s in v]) for k, v in safe_load(f).items()}
+  def reduce(groups, tags, combos, max_len=4):
+      n = len(tags)
+      cont = True
+      # SPECIAL KEYWORDS (OVERRIDE SPACY TAGS)
+      for i in range(n):
+          if tags[i] in ['nsubj', 'nsubjpass', 'pobj', 'dobj']:
+              groups[i] = expand_phrase(groups[i])
+          for k in combos:
+              if (f'({groups[i]})',) in combos[k]:
+                  tags[i] = k
+                  continue
+      while cont:
+          cont = False
+          i=0
+          while i<len(tags):
+                      
+              j = i + 1
+              while j < min(len(tags), i+max_len):
+                  tup = tuple(tags[i:j])
+                  # print(tup)
+                  for k in combos:
+                      # print(f'checking {k} for {tup}')
+                      if tup in combos[k]:
+                          # print('*', tup, groups[i:j])
+                          cont = True
+                          groups[i] = ' '.join([f'{s}' for s,t in zip(groups[i:j], tup)])
+                          tags[i] = k
+                          for _ in range(i+1, j):
+                              tags.pop(i+1)
+                              groups.pop(i+1)
+                          # print('*', tags, groups)
+                          break
+                  else:
+                      j += 1
+                      continue
+                  j = i
+              i += 1
+      
+      return groups, tags
+  def expand_phrase(token):
+      # toks = sorted([token] + list(token.children), key=lambda x: x.idx)
+      coref = doc._.coref_chains.resolve(token) or ''
+      
+      if coref:
+          coref = [s for s in coref if str(s).lower() != token.text.lower()] or ''
+      if coref:
+          coref = f" {coref}"
+      
+      return f'{token}{coref}'
+
+  doc = nlp("here is a sentence that was made in Atlanta Georgia")
+  ignore = ['dep', 'mark']
+  words, tags = reduce(
+      [t for t in doc if t.dep_ not in ignore],
+      [t.dep_ for t in doc if t.dep_ not in ignore],
+      pos
+  )
+  [f'{w} ({t})' for w,t in zip(words, tags)]

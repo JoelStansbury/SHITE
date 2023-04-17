@@ -1,0 +1,17 @@
+[project]
+name = "shite"
+authors = [
+    {name = "Joel Stansbury", email = "stansbury.joel@gmail.com"},
+]
+description = "StocHastIc parT of spEech tagging"
+readme = "README.md"
+requires-python = ">=3.7"
+keywords = ["NLP"]
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "numpy",
+]
+dynamic = ["version"]
